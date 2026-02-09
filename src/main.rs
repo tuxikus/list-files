@@ -4,20 +4,15 @@ use std::fs;
 use std::io;
 use std::os::unix::fs::PermissionsExt;
 
+const BLUE: &'static str = "\x1b[34m";
+const CYAN: &'static str = "\x1b[36m";
+const NC: &'static str = "\x1b[0m";
+
 enum FileType {
     File,
     Dir,
+    Link,
     Undefined,
-}
-
-impl fmt::Display for FileType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FileType::File => write!(f, "F"),
-            FileType::Dir => write!(f, "D"),
-            FileType::Undefined => write!(f, "U"),
-        }
-    }
 }
 
 struct File {
@@ -35,6 +30,8 @@ impl File {
                     FileType::File
                 } else if ft.is_dir() {
                     FileType::Dir
+                } else if ft.is_symlink() {
+                    FileType::Link
                 } else {
                     FileType::Undefined
                 }
@@ -72,7 +69,8 @@ impl fmt::Display for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.file_type {
             FileType::File => write!(f, "{} {}", self.permissions, self.name),
-            FileType::Dir => write!(f, "{} {}/", self.permissions, self.name),
+            FileType::Dir => write!(f, "{} {}{}/{}", self.permissions, BLUE, self.name, NC),
+            FileType::Link => write!(f, "{} {}{}{}", self.permissions, CYAN, self.name, NC),
             FileType::Undefined => write!(f, "-"),
         }
     }

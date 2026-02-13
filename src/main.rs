@@ -19,6 +19,7 @@ struct File {
     name: String,
     file_type: FileType,
     permissions: String,
+    link_target: Option<String>,
 }
 
 impl File {
@@ -63,6 +64,16 @@ impl File {
 
         s
     }
+
+    fn get_link_target(entry: &fs::DirEntry) -> Option<String> {
+        let path = entry.path();
+        if !path.is_symlink() {
+            return None;
+        }
+
+        let target = fs::read_link(&path).ok()?;
+        Some(target.to_string_lossy().into_owned())
+    }
 }
 
 impl fmt::Display for File {
@@ -70,7 +81,15 @@ impl fmt::Display for File {
         match self.file_type {
             FileType::File => write!(f, "{} {}", self.permissions, self.name),
             FileType::Dir => write!(f, "{} {}{}/{}", self.permissions, BLUE, self.name, NC),
-            FileType::Link => write!(f, "{} {}{}{}", self.permissions, CYAN, self.name, NC),
+            FileType::Link => write!(
+                f,
+                "{} {}{} -> {}{}",
+                self.permissions,
+                CYAN,
+                self.name,
+                self.link_target.as_deref().unwrap_or("<invalid>"),
+                NC
+            ),
             FileType::Undefined => write!(f, "-"),
         }
     }
@@ -82,6 +101,7 @@ impl From<fs::DirEntry> for File {
             name: value.file_name().into_string().unwrap(),
             file_type: File::get_file_type(&value),
             permissions: File::get_permissions_string(&value),
+            link_target: File::get_link_target(&value),
         }
     }
 }
